@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { CITIES, CATEGORIES, RADIUS_KM, STATUS } from '../lib/config';
 import { BusinessStore } from '../lib/store';
 
-const MapWithNoSSR = dynamic(() => import('@/components/Map'), { ssr: false });
+const MapWithNoSSR = dynamic(() => import('../components/Map'), { ssr: false });
 
 export default function HomePage() {
   const [store, setStore] = useState(null);
