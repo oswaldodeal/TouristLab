@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { CATEGORIES, STATUS } from '@/lib/config';
-import { BusinessStore } from '@/lib/store';
+import { CATEGORIES, STATUS } from '../../lib/config';
+import { BusinessStore } from '../../lib/store';
 
 export default function AdminPage() {
   const [store, setStore] = useState(null);
