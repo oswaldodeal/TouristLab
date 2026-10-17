@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import 'leaflet/dist/leaflet.css';
+import { BusinessStore } from '../lib/store';
 
 export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, store }) {
   useEffect(() => {
