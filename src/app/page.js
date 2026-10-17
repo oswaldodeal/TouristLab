@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { CITIES, CATEGORIES, RADIUS_KM, STATUS } from '@/lib/config';
-import { BusinessStore } from '@/lib/store';
+import { CITIES, CATEGORIES, RADIUS_KM, STATUS } from '../lib/config';
+import { BusinessStore } from '../lib/store';
 
 const MapWithNoSSR = dynamic(() => import('@/components/Map'), { ssr: false });
 
