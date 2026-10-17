@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { CITIES, CATEGORIES } from '@/lib/config';
-import { BusinessStore } from '@/lib/store';
+import { CITIES, CATEGORIES } from '../../lib/config';
+import { BusinessStore } from '../../lib/store';
 
 export default function RegisterPage() {
   const [store, setStore] = useState(null);
