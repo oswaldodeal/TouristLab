@@ -1,0 +1,204 @@
+/* ==========================================
+   TouristLab — Independent Project
+   ========================================== */
+
+:root {
+  --tl-darker: #020617;
+  --tl-dark: #0f172a;
+  --tl-card: rgba(15, 23, 42, 0.7);
+  --tl-primary: #3b82f6;
+  --tl-accent: #06b6d4;
+  --tl-success: #10b981;
+  --tl-warning: #f59e0b;
+  --tl-danger: #ef4444;
+  --tl-text: #e2e8f0;
+  --tl-muted: #94a3b8;
+  --tl-border: rgba(148, 163, 184, 0.2);
+  --tl-radius: 10px;
+  --tl-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--tl-darker);
+  background-image: radial-gradient(circle at top, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
+  color: var(--tl-text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.tl-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.tl-header {
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--tl-border);
+  padding: 20px 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.tl-header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.tl-brand {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+
+.tl-nav {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.tl-nav a {
+  color: var(--tl-muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: color 0.2s;
+}
+
+.tl-nav a:hover,
+.tl-nav a.active {
+  color: var(--tl-primary);
+}
+
+.tl-section { padding: 60px 0; }
+
+.tl-intro {
+  text-align: center;
+  padding-top: 40px;
+  padding-bottom: 30px;
+}
+
+.tl-intro h1 {
+  font-size: 2.2rem;
+  margin-bottom: 12px;
+  color: #fff;
+}
+
+.tl-lead {
+  font-size: 1.1rem;
+  color: var(--tl-muted);
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+h2 {
+  font-size: 1.4rem;
+  margin-bottom: 20px;
+  color: #fff;
+}
+
+.tl-card {
+  background: var(--tl-card);
+  border: 1px solid var(--tl-border);
+  border-radius: var(--tl-radius);
+  padding: 24px;
+  box-shadow: var(--tl-shadow);
+}
+
+.tl-btn {
+  padding: 12px 24px;
+  border-radius: var(--tl-radius);
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tl-btn-primary {
+  background: linear-gradient(135deg, var(--tl-primary), var(--tl-accent));
+  color: white;
+}
+
+.tl-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.tl-btn-secondary {
+  background: transparent;
+  color: var(--tl-primary);
+  border: 1px solid var(--tl-primary);
+}
+
+.tl-btn-success { background: var(--tl-success); color: white; }
+.tl-btn-danger { background: var(--tl-danger); color: white; }
+
+.tl-input, .tl-select, .tl-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(2, 6, 23, 0.5);
+  border: 1px solid var(--tl-border);
+  border-radius: 8px;
+  color: var(--tl-text);
+  font-size: 0.95rem;
+}
+
+.tl-input:focus, .tl-select:focus, .tl-textarea:focus {
+  outline: none;
+  border-color: var(--tl-primary);
+}
+
+.tl-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+
+.tl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.tl-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.tl-footer {
+  border-top: 1px solid var(--tl-border);
+  padding: 32px 0;
+  text-align: center;
+  color: var(--tl-muted);
+  font-size: 0.85rem;
+  margin-top: 40px;
+}
+
+.tl-status-basic { color: var(--tl-warning); }
+.tl-status-full { color: var(--tl-success); }
+.tl-status-pending { color: var(--tl-muted); }
+.tl-status-rejected { color: var(--tl-danger); }
+
+#touristMap {
+  height: 450px;
+  border-radius: var(--tl-radius);
+  border: 1px solid var(--tl-border);
+  box-shadow: var(--tl-shadow);
+}
+
+@media (max-width: 768px) {
+  .tl-header-inner { flex-direction: column; text-align: center; }
+  .tl-grid-2 { grid-template-columns: 1fr; }
+  .tl-intro h1 { font-size: 1.6rem; }
+}
