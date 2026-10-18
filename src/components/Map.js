@@ -1,17 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { BusinessStore } from '../lib/store';
 
-export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, store }) {
+export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, store, routeGeoJSON }) {
+  const mapRef = useRef(null);
+  const routeLayerRef = useRef(null);
+
+  // Initialize map
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const L = require('leaflet');
+    if (!userLocation) return;
 
+    // Create map
     const map = L.map('touristMap').setView(
       [userLocation.lat, userLocation.lng],
       15
     );
+    mapRef.current = map;
 
+    // Base tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
@@ -24,7 +32,7 @@ export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, s
     });
     L.marker([userLocation.lat, userLocation.lng], { icon: centreIcon })
       .addTo(map)
-      .bindPopup(`<strong>${userLocation.name}</strong>`);
+      .bindPopup(`<strong>${userLocation.name || 'Your Location'}</strong>`);
 
     // 1km radius circle
     L.circle([userLocation.lat, userLocation.lng], {
@@ -39,26 +47,58 @@ export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, s
     businesses.forEach(biz => {
       const cat = CATEGORIES.find(c => c.id === biz.category);
       const iconHtml = cat?.icon || '📍';
-
       const icon = L.divIcon({
         html: `<div style="font-size:22px; text-align:center;">${iconHtml}</div>`,
         iconSize: [26, 26],
         iconAnchor: [13, 13]
       });
-
       const popupContent = `
         <strong>${biz.name}</strong><br>
         ${store.formatDistance(biz.distance)} away
         ${biz.status === 'basic' ? '<br><em style="color:orange">Basic listing</em>' : ''}
       `;
-
       L.marker([biz.lat, biz.lng], { icon })
         .addTo(map)
         .bindPopup(popupContent);
     });
 
-    return () => map.remove();
+    // Cleanup on unmount
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
   }, [userLocation, businesses, RADIUS_KM, CATEGORIES, store]);
 
-  return <div id="touristMap" style={{width:'100%'}}></div>;
+  // ✅ Draw/update route line on map
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const map = mapRef.current;
+
+    // Remove existing route
+    if (routeLayerRef.current) {
+      map.removeLayer(routeLayerRef.current);
+      routeLayerRef.current = null;
+    }
+
+    // Draw new route if provided
+    if (routeGeoJSON) {
+      routeLayerRef.current = L.geoJSON(routeGeoJSON, {
+        style: {
+          color: '#22c55e',
+          weight: 5,
+          opacity: 0.8,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }
+      }).addTo(map);
+
+      // Auto-zoom to show full route
+      map.fitBounds(routeLayerRef.current.getBounds(), { padding: [60, 60] });
+    }
+  }, [routeGeoJSON]);
+
+  return <div id="touristMap" style={{ width: '100%', height: '500px' }}></div>;
 }
