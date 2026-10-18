@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -7,32 +6,54 @@ import { CITIES, CATEGORIES, RADIUS_KM, STATUS } from '../lib/config';
 import { BusinessStore } from '../lib/store';
 
 const MapWithNoSSR = dynamic(() => import('../components/Map'), { ssr: false });
+const Directions = dynamic(() => import('../components/Directions'), { ssr: false });
 
 export default function HomePage() {
   const [store, setStore] = useState(null);
   const [selectedCity, setSelectedCity] = useState('manchester');
-  const [userLocation, setUserLocation] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [businesses, setBusinesses] = useState([]);
+  const [selectedDestination, setSelectedDestination] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
 
+  // Initialise store + default location from selected city
   useEffect(() => {
     setStore(new BusinessStore());
-    setUserLocation(CITIES.manchester);
   }, []);
 
+  // Update location when city changes
   useEffect(() => {
     if (!store || !selectedCity) return;
     const city = CITIES[selectedCity];
-    setUserLocation(city);
+    setUserLocation({ lat: city.lat, lng: city.lng });
+  }, [store, selectedCity]);
 
+  // Try to get user's actual GPS location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {
+          // GPS failed — use selected city centre
+          const city = CITIES[selectedCity];
+          setUserLocation({ lat: city.lat, lng: city.lng });
+        }
+      );
+    }
+  }, [selectedCity]);
+
+  // Filter businesses
+  useEffect(() => {
+    if (!store || !selectedCity) return;
+    const city = CITIES[selectedCity];
     let list = store.getForPublic(selectedCity).map(biz => {
       biz.distance = store.calculateDistance(
         city.lat, city.lng, biz.lat, biz.lng
       );
       return biz;
     }).filter(biz => biz.distance <= RADIUS_KM);
-
+    
     if (categoryFilter !== 'all') {
       list = list.filter(biz => biz.category === categoryFilter);
     }
@@ -43,7 +64,6 @@ export default function HomePage() {
         biz.description?.toLowerCase().includes(term)
       );
     }
-
     list.sort((a, b) => a.distance - b.distance);
     setBusinesses(list);
   }, [store, selectedCity, searchTerm, categoryFilter]);
@@ -67,7 +87,7 @@ export default function HomePage() {
         <section className="tl-section tl-intro">
           <div className="tl-container">
             <h1>Discover What's Around You</h1>
-            <p className="tl-lead">Find restaurants, takeaways, gyms, libraries, parks and galleries — all within 1km of Manchester City Centre.</p>
+            <p className="tl-lead">Find restaurants, takeaways, gyms, libraries, parks and galleries — all within 1km of your area.</p>
           </div>
         </section>
 
@@ -126,6 +146,15 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Directions Panel — shows when a destination is selected */}
+        {selectedDestination && userLocation && (
+          <Directions
+            origin={userLocation}
+            destination={{ lat: selectedDestination.lat, lng: selectedDestination.lng }}
+            destinationName={selectedDestination.name}
+          />
+        )}
+
         <section className="tl-section" style={{paddingTop:'30px'}}>
           <div className="tl-container">
             <h2>Nearby Places</h2>
@@ -158,7 +187,7 @@ export default function HomePage() {
                       <p style={{fontSize:'0.88rem', color:'var(--tl-muted)', marginBottom:'10px'}}>
                         {view.description}
                       </p>
-
+                      
                       {view.isFullVerified ? (
                         <>
                           {view.address && <p style={{fontSize:'0.85rem'}}><strong>Address:</strong> {view.address}</p>}
@@ -171,29 +200,36 @@ export default function HomePage() {
                               </a>
                             </p>
                           )}
-                          <p style={{marginTop:'10px'}}>
-  <a
-    href={`https://www.google.com/maps/dir/?api=1&destination=${biz.lat},${biz.lng}&dir_action=navigate`}
-    target="_blank"
-    rel="noopener noreferrer"
-    style={{
-      display:'inline-block',
-      background:'rgba(59,130,246,0.15)',
-      padding:'8px 14px',
-      borderRadius:'8px',
-      color:'#93c5fd',
-      textDecoration:'none',
-      fontSize:'0.9rem',
-      marginRight:'12px'
-    }}
-  >
-    🚶 Get Directions
-  </a>
-
-  <span style={{color:'#94a3b8', fontSize:'0.8rem'}}>
-    Opens in Google — close tab to return to Discover
-  </span>
-</p>
+                          
+                          <div style={{marginTop:'12px'}}>
+                            <button
+                              onClick={() => setSelectedDestination({ lat: biz.lat, lng: biz.lng, name: biz.name })}
+                              style={{
+                                display: 'inline-block',
+                                background: 'rgba(34,197,94,0.2)',
+                                padding: '8px 14px',
+                                borderRadius: '8px',
+                                color: '#86efac',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.9rem',
+                                marginRight: '10px'
+                              }}
+                            >
+                              🧭 Get Directions
+                            </button>
+                            <a
+                              href="/"
+                              style={{
+                                display: 'inline-block',
+                                color: '#94a3b8',
+                                textDecoration: 'none',
+                                fontSize: '0.85rem'
+                              }}
+                            >
+                              ← Back to Discover
+                            </a>
+                          </div>
                         </>
                       ) : (
                         <p style={{color:'var(--tl-warning)', fontSize:'0.85rem', marginTop:'10px'}}>
