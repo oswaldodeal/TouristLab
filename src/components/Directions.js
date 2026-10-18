@@ -44,37 +44,37 @@ export default function Directions({ origin, destination, destinationName, onRou
       setLoading(false);
     };
 
-    const fetchRoute = async () => {
-      setLoading(true);
-      setRoute(null);
-      onRouteChange?.(null);
+ const fetchRoute = async () => {
+  setLoading(true);
+  setRoute(null);
+  onRouteChange?.(null);
+  
+  try {
+    const osrmProfile = mode === 'walk' ? 'walking' : mode === 'bike' ? 'cycling' : 'driving';
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5-second limit
 
-      try {
-        const profile = currentMode?.profile || 'car';
-        const timeout = setTimeout(() => controller.abort(), 4000); // 4-second limit
-
-        const res = await fetch(
-          `https://routing.openstreetmap.de/routed-${profile}/route/v1/driving/` +
-          `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
-          `?overview=full&geometries=geojson&steps=true`,
-          { signal }
-        );
-
-        clearTimeout(timeout);
-
-        if (!res.ok) throw new Error('Bad response');
-        const data = await res.json();
-
-        if (data?.routes?.[0]) {
-          setRoute(data.routes[0]);
-          onRouteChange?.(data.routes[0].geometry); // ✅ Send line to map
-        } else {
-          showFallback();
-        }
-      } catch {
-        if (!signal.aborted) showFallback();
-      }
-    };
+    const res = await fetch(
+      `https://router.project-osrm.org/route/v1/${osrmProfile}/` +
+      `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
+      `?overview=full&geometries=geojson&steps=true`,
+      { signal }
+    );
+    
+    clearTimeout(timeout);
+    
+    if (!res.ok) throw new Error('Bad response');
+    const data = await res.json();
+    
+    if (data?.routes?.[0]) {
+      setRoute(data.routes[0]);
+      onRouteChange?.(data.routes[0].geometry); // ✅ Green line sent to map
+    } else {
+      showFallback();
+    }
+  } catch {
+    if (!signal.aborted) showFallback();
+  }
+};
 
     fetchRoute();
     return () => controller.abort();
