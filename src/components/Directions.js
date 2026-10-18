@@ -12,7 +12,6 @@ export default function Directions({ origin, destination, destinationName, onRou
     { id: 'drive', name: 'Drive', icon: '🚗', profile: 'car', speedKmH: 35 },
   ];
 
-  // Straight-line distance calculation
   const getDistanceKm = () => {
     if (!origin || !destination) return 0;
     const R = 6371;
@@ -30,38 +29,29 @@ export default function Directions({ origin, destination, destinationName, onRou
 
     const controller = new AbortController();
     const signal = controller.signal;
+    const distanceKm = getDistanceKm();
+    const currentMode = modes.find(m => m.id === mode);
 
-    const getRoute = async () => {
+    // Fallback — works instantly
+    const showFallback = () => {
+      onRouteChange?.(null);
+      const estimatedMin = Math.round((distanceKm / (currentMode?.speedKmH || 5)) * 60);
+      setRoute({
+        distance: distanceKm * 1000,
+        duration: estimatedMin * 60,
+        legs: [{ steps: [{ maneuver: { instruction: 'Head directly to your destination' }, name: 'Follow signs →' }] }]
+      });
+      setLoading(false);
+    };
+
+    const fetchRoute = async () => {
       setLoading(true);
       setRoute(null);
       onRouteChange?.(null);
-      
-      const currentMode = modes.find(m => m.id === mode);
-      const distanceKm = getDistanceKm();
-      
-      // FALLBACK FUNCTION — always works instantly
-      const useFallback = () => {
-        onRouteChange?.(null);
-        const estimatedMin = Math.round((distanceKm / (currentMode?.speedKmH || 5)) * 60);
-        setRoute({
-          distance: distanceKm * 1000,
-          duration: estimatedMin * 60,
-          legs: [{ steps: [{ 
-            maneuver: { instruction: 'Head directly to your destination' }, 
-            name: 'Follow signs →' 
-          }] }]
-        });
-        setLoading(false);
-      };
 
       try {
         const profile = currentMode?.profile || 'car';
-        
-        // Set timeout: if service takes more than 5s → use fallback
-        const timeoutId = setTimeout(() => {
-          console.log('Routing service slow — using fallback');
-          controller.abort();
-        }, 5000);
+        const timeout = setTimeout(() => controller.abort(), 4000); // 4-second limit
 
         const res = await fetch(
           `https://routing.openstreetmap.de/routed-${profile}/route/v1/driving/` +
@@ -69,29 +59,26 @@ export default function Directions({ origin, destination, destinationName, onRou
           `?overview=full&geometries=geojson&steps=true`,
           { signal }
         );
-        
-        clearTimeout(timeoutId);
-        
-        if (!res.ok) throw new Error('Service unavailable');
+
+        clearTimeout(timeout);
+
+        if (!res.ok) throw new Error('Bad response');
         const data = await res.json();
-        
-        if (!signal.aborted && data.routes?.[0]) {
+
+        if (data?.routes?.[0]) {
           setRoute(data.routes[0]);
-          onRouteChange?.(data.routes[0].geometry);
-          setLoading(false);
+          onRouteChange?.(data.routes[0].geometry); // ✅ Send line to map
         } else {
-          throw new Error('No route data');
+          showFallback();
         }
-      } catch (err) {
-        if (!signal.aborted) {
-          useFallback();
-        }
+      } catch {
+        if (!signal.aborted) showFallback();
       }
     };
 
-    getRoute();
+    fetchRoute();
     return () => controller.abort();
-  }, [origin, destination, mode, onRouteChange]);
+  }, [origin, destination, mode]);
 
   const handleClose = () => {
     setRoute(null);
@@ -105,29 +92,12 @@ export default function Directions({ origin, destination, destinationName, onRou
   const isEstimate = route?.legs?.[0]?.steps?.length === 1;
 
   return (
-    <div style={{
-      padding: '16px',
-      background: '#0f172a',
-      borderTop: '1px solid #1e293b',
-      marginTop: '16px',
-      borderRadius: '12px'
-    }}>
+    <div style={{ padding: '16px', background: '#0f172a', borderTop: '1px solid #1e293b', marginTop: '16px', borderRadius: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <h4 style={{ margin: 0, color: '#f8fafc', fontSize: '1rem' }}>
           🧭 Directions → {destinationName}
         </h4>
-        <button
-          onClick={handleClose}
-          style={{ 
-            background: 'none', 
-            border: 'none', 
-            color: '#94a3b8', 
-            cursor: 'pointer',
-            fontSize: '1.1rem'
-          }}
-        >
-          ✕
-        </button>
+        <button onClick={handleClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.1rem' }}>✕</button>
       </div>
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
@@ -136,14 +106,10 @@ export default function Directions({ origin, destination, destinationName, onRou
             key={m.id}
             onClick={() => setMode(m.id)}
             style={{
-              padding: '8px 14px',
-              borderRadius: '8px',
-              border: 'none',
+              padding: '8px 14px', borderRadius: '8px', border: 'none',
               background: mode === m.id ? '#22c55e' : '#1e293b',
               color: mode === m.id ? '#000' : '#cbd5e1',
-              cursor: 'pointer',
-              fontWeight: mode === m.id ? 600 : 400,
-              fontSize: '0.9rem'
+              cursor: 'pointer', fontWeight: mode === m.id ? 600 : 400, fontSize: '0.9rem'
             }}
           >
             {m.icon} {m.name}
@@ -157,21 +123,12 @@ export default function Directions({ origin, destination, destinationName, onRou
         <div>
           <p style={{ color: '#e2e8f0', margin: '0 0 12px 0', fontSize: '0.95rem' }}>
             📍 <strong>{distanceKm} km</strong> &nbsp;|&nbsp; ⏱️ ~<strong>{durationMin} min</strong>
-            {isEstimate && <span style={{color:'#facc15', fontSize:'0.8rem', marginLeft:'8px'}}>(estimate)</span>}
+            {isEstimate && <span style={{ color: '#facc15', fontSize: '0.8rem', marginLeft: '8px' }}>(estimate)</span>}
           </p>
-          
           {route.legs?.[0]?.steps && (
-            <ol style={{ 
-              paddingLeft: '20px', 
-              margin: '0', 
-              color: '#cbd5e1',
-              fontSize: '0.9rem',
-              lineHeight: '1.7'
-            }}>
+            <ol style={{ paddingLeft: '20px', margin: '0', color: '#cbd5e1', fontSize: '0.9rem', lineHeight: '1.7' }}>
               {route.legs[0].steps.map((step, i) => (
-                <li key={i}>
-                  {step.maneuver?.instruction || step.name || 'Continue ahead'}
-                </li>
+                <li key={i}>{step.maneuver?.instruction || step.name || 'Continue ahead'}</li>
               ))}
             </ol>
           )}
