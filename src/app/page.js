@@ -172,23 +172,37 @@ export default function HomePage() {
                             </p>
                           )}
                           <p style={{marginTop:'10px'}}>
-                            <a
-                              href={`https://www.google.com/maps/dir/?api=1&destination=${biz.lat},${biz.lng}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{
-                                display:'inline-block',
-                                background:'rgba(59,130,246,0.15)',
-                                padding:'6px 12px',
-                                borderRadius:'6px',
-                                color:'#93c5fd',
-                                textDecoration:'none',
-                                fontSize:'0.9rem'
-                              }}
-                            >
-                              🚶 Get Directions
-                            </a>
-                          </p>
+  <a
+    href={`https://www.google.com/maps/dir/?api=1&destination=${biz.lat},${biz.lng}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      display:'inline-block',
+      background:'rgba(59,130,246,0.15)',
+      padding:'6px 12px',
+      borderRadius:'6px',
+      color:'#93c5fd',
+      textDecoration:'none',
+      fontSize:'0.9rem',
+      marginRight:'10px'
+    }}
+  >
+    🚶 Get Directions
+  </a>
+
+  {/* ← NEW LINK GOES HERE — inside the same <p> block */}
+  <a
+    href="/"
+    style={{
+      display:'inline-block',
+      color:'#94a3b8',
+      textDecoration:'none',
+      fontSize:'0.85rem'
+    }}
+  >
+    ← Back to TouristLab
+  </a>
+</p>
                         </>
                       ) : (
                         <p style={{color:'var(--tl-warning)', fontSize:'0.85rem', marginTop:'10px'}}>
