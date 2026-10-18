@@ -5,7 +5,6 @@ export default function Directions({ origin, destination, destinationName, onRou
   const [mode, setMode] = useState('walk');
   const [route, setRoute] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   const modes = [
     { id: 'walk', name: 'Walk', icon: '🚶', profile: 'foot', speedKmH: 5 },
@@ -16,7 +15,7 @@ export default function Directions({ origin, destination, destinationName, onRou
   // Straight-line distance calculation
   const getDistanceKm = () => {
     if (!origin || !destination) return 0;
-    const R = 6371; // Earth radius in km
+    const R = 6371;
     const dLat = (destination.lat - origin.lat) * Math.PI / 180;
     const dLng = (destination.lng - origin.lng) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -29,10 +28,13 @@ export default function Directions({ origin, destination, destinationName, onRou
   useEffect(() => {
     if (!origin || !destination) return;
 
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const getRoute = async () => {
       setLoading(true);
-      setError(null);
       setRoute(null);
+      onRouteChange?.(null);
       
       const currentMode = modes.find(m => m.id === mode);
       const profile = currentMode?.profile || 'car';
@@ -42,21 +44,23 @@ export default function Directions({ origin, destination, destinationName, onRou
         const res = await fetch(
           `https://routing.openstreetmap.de/routed-${profile}/route/v1/driving/` +
           `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
-          `?overview=full&geometries=geojson&steps=true`
+          `?overview=full&geometries=geojson&steps=true`,
+          { signal }
         );
         
         if (!res.ok) throw new Error('Service unavailable');
         const data = await res.json();
         
-        if (data.routes && data.routes[0]) {
+        if (!signal.aborted && data.routes?.[0]) {
           setRoute(data.routes[0]);
-          onRouteChange?.(data.routes[0].geometry); // ✅ Send path to map
+          onRouteChange?.(data.routes[0].geometry);
         } else {
           throw new Error('No route');
         }
       } catch (err) {
-        onRouteChange?.(null); // ✅ Clear line for estimate
-        // Fallback: calculate estimate from straight-line distance
+        if (signal.aborted) return;
+        onRouteChange?.(null);
+        // Fallback estimate
         const estimatedMin = Math.round((distanceKm / (currentMode?.speedKmH || 5)) * 60);
         setRoute({
           distance: distanceKm * 1000,
@@ -66,26 +70,25 @@ export default function Directions({ origin, destination, destinationName, onRou
             name: 'Follow signs →' 
           }] }]
         });
-        setError(null);
       }
       
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     };
 
     getRoute();
-  }, [origin, destination, mode]);
+    return () => controller.abort();
+  }, [origin, destination, mode, onRouteChange]);
 
   const handleClose = () => {
     setRoute(null);
-    setError(null);
-    onRouteChange?.(null); // ✅ Remove line from map
+    onRouteChange?.(null);
   };
 
   if (!origin || !destination) return null;
 
   const distanceKm = route ? (route.distance / 1000).toFixed(1) : '—';
   const durationMin = route ? Math.round(route.duration / 60) : '—';
-  const isEstimate = route && route.legs?.[0]?.steps?.length === 1;
+  const isEstimate = route?.legs?.[0]?.steps?.length === 1;
 
   return (
     <div style={{
