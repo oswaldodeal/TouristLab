@@ -190,21 +190,9 @@ export default function HomePage() {
     🚶 Get Directions
   </a>
 
-  <a
-    href="/"
-    style={{
-      display:'inline-block',
-      background:'rgba(34,197,94,0.15)',
-      padding:'8px 14px',
-      borderRadius:'8px',
-      color:'#86efac',
-      textDecoration:'none',
-      fontSize:'0.9rem',
-      fontWeight:'500'
-    }}
-  >
-    ← Back to Discover
-  </a>
+  <span style={{color:'#94a3b8', fontSize:'0.8rem'}}>
+    Opens in Google — close tab to return to Discover
+  </span>
 </p>
                         </>
                       ) : (
