@@ -16,8 +16,9 @@ export default function HomePage() {
   const [businesses, setBusinesses] = useState([]);
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
+  const [routeGeoJSON, setRouteGeoJSON] = useState(null);
 
-  // Initialise store + default location from selected city
+  // Initialise store
   useEffect(() => {
     setStore(new BusinessStore());
   }, []);
@@ -27,20 +28,19 @@ export default function HomePage() {
     if (!store || !selectedCity) return;
     const city = CITIES[selectedCity];
     setUserLocation({ lat: city.lat, lng: city.lng });
+    setRouteGeoJSON(null); // Clear route when city changes
   }, [store, selectedCity]);
 
-  // Try to get user's actual GPS location
+  // Try to get user's GPS location
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {
-          // GPS failed — use selected city centre
-          const city = CITIES[selectedCity];
-          setUserLocation({ lat: city.lat, lng: city.lng });
-        }
-      );
-    }
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {
+        const city = CITIES[selectedCity];
+        setUserLocation({ lat: city.lat, lng: city.lng });
+      }
+    );
   }, [selectedCity]);
 
   // Filter businesses
@@ -48,9 +48,7 @@ export default function HomePage() {
     if (!store || !selectedCity) return;
     const city = CITIES[selectedCity];
     let list = store.getForPublic(selectedCity).map(biz => {
-      biz.distance = store.calculateDistance(
-        city.lat, city.lng, biz.lat, biz.lng
-      );
+      biz.distance = store.calculateDistance(city.lat, city.lng, biz.lat, biz.lng);
       return biz;
     }).filter(biz => biz.distance <= RADIUS_KM);
     
@@ -98,7 +96,11 @@ export default function HomePage() {
               <select
                 className="tl-select"
                 value={selectedCity}
-                onChange={(e) => setSelectedCity(e.target.value)}
+                onChange={(e) => {
+                  setSelectedCity(e.target.value);
+                  setSelectedDestination(null);
+                  setRouteGeoJSON(null);
+                }}
                 style={{maxWidth:'400px'}}
               >
                 {Object.values(CITIES).map(city => (
@@ -141,17 +143,19 @@ export default function HomePage() {
                 RADIUS_KM={RADIUS_KM}
                 CATEGORIES={CATEGORIES}
                 store={store}
+                routeGeoJSON={routeGeoJSON}
               />
             )}
           </div>
         </section>
 
-        {/* Directions Panel — shows when a destination is selected */}
+        {/* Directions Panel */}
         {selectedDestination && userLocation && (
           <Directions
             origin={userLocation}
             destination={{ lat: selectedDestination.lat, lng: selectedDestination.lng }}
             destinationName={selectedDestination.name}
+            onRouteChange={setRouteGeoJSON}
           />
         )}
 
