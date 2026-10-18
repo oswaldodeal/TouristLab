@@ -23,8 +23,10 @@ export default function Directions({ origin, destination, destinationName }) {
       setRoute(null);
       
       try {
+        const profile = mode === 'walk' ? 'foot' : mode === 'bike' ? 'bicycle' : 'car';
+        
         const res = await fetch(
-          `https://routing.openstreetmap.de/routed-${mode}/route/v1/driving/` +
+          `https://routing.openstreetmap.de/routed-${profile}/route/v1/driving/` +
           `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
           `?overview=full&geometries=geojson&steps=true`
         );
@@ -82,7 +84,6 @@ export default function Directions({ origin, destination, destinationName }) {
         </button>
       </div>
 
-      {/* Mode Selector */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
         {modes.map(m => (
           <button
@@ -104,7 +105,6 @@ export default function Directions({ origin, destination, destinationName }) {
         ))}
       </div>
 
-      {/* Results */}
       {loading && <p style={{ color: '#94a3b8' }}>Calculating route…</p>}
       {error && <p style={{ color: '#f87171' }}>{error}</p>}
       
