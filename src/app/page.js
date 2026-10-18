@@ -173,34 +173,37 @@ export default function HomePage() {
                           )}
                           <p style={{marginTop:'10px'}}>
   <a
-    href={`https://www.google.com/maps/dir/?api=1&destination=${biz.lat},${biz.lng}`}
+    href={`https://www.google.com/maps/dir/?api=1&destination=${biz.lat},${biz.lng}&dir_action=navigate`}
     target="_blank"
     rel="noopener noreferrer"
     style={{
       display:'inline-block',
       background:'rgba(59,130,246,0.15)',
-      padding:'6px 12px',
-      borderRadius:'6px',
+      padding:'8px 14px',
+      borderRadius:'8px',
       color:'#93c5fd',
       textDecoration:'none',
       fontSize:'0.9rem',
-      marginRight:'10px'
+      marginRight:'12px'
     }}
   >
     🚶 Get Directions
   </a>
 
-  {/* ← NEW LINK GOES HERE — inside the same <p> block */}
   <a
     href="/"
     style={{
       display:'inline-block',
-      color:'#94a3b8',
+      background:'rgba(34,197,94,0.15)',
+      padding:'8px 14px',
+      borderRadius:'8px',
+      color:'#86efac',
       textDecoration:'none',
-      fontSize:'0.85rem'
+      fontSize:'0.9rem',
+      fontWeight:'500'
     }}
   >
-    ← Back to TouristLab
+    ← Back to Discover
   </a>
 </p>
                         </>
