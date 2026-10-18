@@ -9,10 +9,23 @@ export default function Directions({ origin, destination, destinationName }) {
   const [error, setError] = useState(null);
 
   const modes = [
-    { id: 'walk', name: 'Walk', icon: '🚶', profile: 'foot' },
-    { id: 'bike', name: 'Cycle', icon: '🚲', profile: 'bicycle' },
-    { id: 'drive', name: 'Drive', icon: '🚗', profile: 'car' },
+    { id: 'walk', name: 'Walk', icon: '🚶', profile: 'foot', speedKmH: 5 },
+    { id: 'bike', name: 'Cycle', icon: '🚲', profile: 'bicycle', speedKmH: 15 },
+    { id: 'drive', name: 'Drive', icon: '🚗', profile: 'car', speedKmH: 35 },
   ];
+
+  // Simple straight-line distance fallback (as the crow flies)
+  const getDistanceKm = () => {
+    if (!origin || !destination) return 0;
+    const R = 6371; // Earth radius in km
+    const dLat = (destination.lat - origin.lat) * Math.PI / 180;
+    const dLng = (destination.lng - origin.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(origin.lat * Math.PI / 180) * Math.cos(destination.lat * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
 
   useEffect(() => {
     if (!origin || !destination) return;
@@ -22,27 +35,34 @@ export default function Directions({ origin, destination, destinationName }) {
       setError(null);
       setRoute(null);
       
+      const currentMode = modes.find(m => m.id === mode);
+      const profile = currentMode?.profile || 'car';
+      const distanceKm = getDistanceKm();
+      
       try {
-        const currentMode = modes.find(m => m.id === mode);
-        const profile = currentMode?.profile || 'car';
-        
         const res = await fetch(
           `https://routing.openstreetmap.de/routed-${profile}/route/v1/driving/` +
           `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
           `?overview=full&geometries=geojson&steps=true`
         );
         
-        if (!res.ok) throw new Error('Route service unavailable');
+        if (!res.ok) throw new Error('Service unavailable');
         const data = await res.json();
         
         if (data.routes && data.routes[0]) {
           setRoute(data.routes[0]);
         } else {
-          throw new Error('No route found');
+          throw new Error('No route');
         }
       } catch (err) {
-        setError('Could not calculate directions. Please try again.');
-        console.error('Directions error:', err);
+        // ✅ FALLBACK: Calculate estimate from straight-line distance
+        const estimatedMin = Math.round((distanceKm / (currentMode?.speedKmH || 5)) * 60);
+        setRoute({
+          distance: distanceKm * 1000, // convert to meters
+          duration: estimatedMin * 60, // convert to seconds
+          legs: [{ steps: [{ maneuver: { instruction: 'Head directly to your destination' }, name: 'Follow signs →' }] }]
+        });
+        setError(null); // Clear error — show estimate instead
       }
       
       setLoading(false);
@@ -55,6 +75,7 @@ export default function Directions({ origin, destination, destinationName }) {
 
   const distanceKm = route ? (route.distance / 1000).toFixed(1) : '—';
   const durationMin = route ? Math.round(route.duration / 60) : '—';
+  const isEstimate = error === null && route && route.legs?.[0]?.steps?.length === 1;
 
   return (
     <div style={{
@@ -107,12 +128,12 @@ export default function Directions({ origin, destination, destinationName }) {
       </div>
 
       {loading && <p style={{ color: '#94a3b8' }}>Calculating route…</p>}
-      {error && <p style={{ color: '#f87171' }}>{error}</p>}
       
       {route && !loading && (
         <div>
           <p style={{ color: '#e2e8f0', margin: '0 0 12px 0', fontSize: '0.95rem' }}>
             📍 <strong>{distanceKm} km</strong> &nbsp;|&nbsp; ⏱️ ~<strong>{durationMin} min</strong>
+            {isEstimate && <span style={{color:'#facc15', fontSize:'0.8rem', marginLeft:'8px'}}>(estimate)</span>}
           </p>
           
           {route.legs?.[0]?.steps && (
