@@ -37,30 +37,11 @@ export default function Directions({ origin, destination, destinationName, onRou
       onRouteChange?.(null);
       
       const currentMode = modes.find(m => m.id === mode);
-      const profile = currentMode?.profile || 'car';
       const distanceKm = getDistanceKm();
       
-      try {
-        const res = await fetch(
-          `https://routing.openstreetmap.de/routed-${profile}/route/v1/driving/` +
-          `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
-          `?overview=full&geometries=geojson&steps=true`,
-          { signal }
-        );
-        
-        if (!res.ok) throw new Error('Service unavailable');
-        const data = await res.json();
-        
-        if (!signal.aborted && data.routes?.[0]) {
-          setRoute(data.routes[0]);
-          onRouteChange?.(data.routes[0].geometry);
-        } else {
-          throw new Error('No route');
-        }
-      } catch (err) {
-        if (signal.aborted) return;
+      // FALLBACK FUNCTION — always works instantly
+      const useFallback = () => {
         onRouteChange?.(null);
-        // Fallback estimate
         const estimatedMin = Math.round((distanceKm / (currentMode?.speedKmH || 5)) * 60);
         setRoute({
           distance: distanceKm * 1000,
@@ -70,9 +51,42 @@ export default function Directions({ origin, destination, destinationName, onRou
             name: 'Follow signs →' 
           }] }]
         });
+        setLoading(false);
+      };
+
+      try {
+        const profile = currentMode?.profile || 'car';
+        
+        // Set timeout: if service takes more than 5s → use fallback
+        const timeoutId = setTimeout(() => {
+          console.log('Routing service slow — using fallback');
+          controller.abort();
+        }, 5000);
+
+        const res = await fetch(
+          `https://routing.openstreetmap.de/routed-${profile}/route/v1/driving/` +
+          `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
+          `?overview=full&geometries=geojson&steps=true`,
+          { signal }
+        );
+        
+        clearTimeout(timeoutId);
+        
+        if (!res.ok) throw new Error('Service unavailable');
+        const data = await res.json();
+        
+        if (!signal.aborted && data.routes?.[0]) {
+          setRoute(data.routes[0]);
+          onRouteChange?.(data.routes[0].geometry);
+          setLoading(false);
+        } else {
+          throw new Error('No route data');
+        }
+      } catch (err) {
+        if (!signal.aborted) {
+          useFallback();
+        }
       }
-      
-      if (!signal.aborted) setLoading(false);
     };
 
     getRoute();
