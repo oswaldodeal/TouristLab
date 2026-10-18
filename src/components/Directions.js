@@ -9,9 +9,9 @@ export default function Directions({ origin, destination, destinationName }) {
   const [error, setError] = useState(null);
 
   const modes = [
-    { id: 'walk', name: 'Walk', icon: '🚶' },
-    { id: 'bike', name: 'Cycle', icon: '🚲' },
-    { id: 'drive', name: 'Drive', icon: '🚗' },
+    { id: 'walk', name: 'Walk', icon: '🚶', profile: 'foot' },
+    { id: 'bike', name: 'Cycle', icon: '🚲', profile: 'bicycle' },
+    { id: 'drive', name: 'Drive', icon: '🚗', profile: 'car' },
   ];
 
   useEffect(() => {
@@ -23,7 +23,8 @@ export default function Directions({ origin, destination, destinationName }) {
       setRoute(null);
       
       try {
-        const profile = mode === 'walk' ? 'foot' : mode === 'bike' ? 'bicycle' : 'car';
+        const currentMode = modes.find(m => m.id === mode);
+        const profile = currentMode?.profile || 'car';
         
         const res = await fetch(
           `https://routing.openstreetmap.de/routed-${profile}/route/v1/driving/` +
