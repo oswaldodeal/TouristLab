@@ -6,6 +6,7 @@ import { BusinessStore } from '../lib/store';
 export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, store, routeGeoJSON }) {
   const mapRef = useRef(null);
   const routeLayerRef = useRef(null);
+  const routeGeoJSONRef = useRef(null);
 
   // Initialize map
   useEffect(() => {
@@ -71,36 +72,45 @@ export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, s
     };
   }, [userLocation, businesses, RADIUS_KM, CATEGORIES, store]);
 
-  // ✅ Draw/update green route line — NO BLINKING VERSION
-useEffect(() => {
-  if (!mapRef.current) return;
+  useEffect(() => {
+  if (!mapRef.current || !routeGeoJSON) return;
+
   const map = mapRef.current;
 
-  // Remove existing route only if we have new data
+  // Normalise the geometry so identical routes don't trigger a redraw
+  const geoJsonString = JSON.stringify(routeGeoJSON);
+
+  if (routeGeoJSONRef.current === geoJsonString) {
+    // Same route — do nothing, prevent blinking
+    return;
+  }
+
+  routeGeoJSONRef.current = geoJsonString;
+
   if (routeLayerRef.current) {
     map.removeLayer(routeLayerRef.current);
     routeLayerRef.current = null;
   }
 
-  // Draw new route
-  if (routeGeoJSON) {
-    routeLayerRef.current = L.geoJSON(routeGeoJSON, {
-      style: {
-        color: '#22c55e',
-        weight: 5,
-        opacity: 0.8,
-        lineCap: 'round',
-        lineJoin: 'round'
-      }
-    }).addTo(map);
-    
-    // Auto-zoom only once — not repeatedly
-    const bounds = routeLayerRef.current.getBounds();
-    if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [60, 60], animate: false });
+  routeLayerRef.current = L.geoJSON(routeGeoJSON, {
+    style: {
+      color: '#22c55e',
+      weight: 5,
+      opacity: 0.8,
+      lineCap: 'round',
+      lineJoin: 'round'
     }
+  }).addTo(map);
+
+  const bounds = routeLayerRef.current.getBounds();
+
+  if (bounds.isValid()) {
+    map.fitBounds(bounds, {
+      padding: [60, 60],
+      animate: false
+    });
   }
-}, [routeGeoJSON]); // ✅ Runs ONLY when route actually changes
+}, [routeGeoJSON]);
 
   return <div id="touristMap" style={{ width: '100%', height: '500px' }}></div>;
 }
