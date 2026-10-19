@@ -1,10 +1,13 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function Directions({ origin, destination, destinationName, onRouteChange }) {
   const [mode, setMode] = useState('walk');
   const [route, setRoute] = useState(null);
   const [loading, setLoading] = useState(false);
+  
+  // Track last sent geometry to prevent duplicate updates → stops blinking
+  const lastGeometryRef = useRef(null);
 
   const modes = [
     { id: 'walk', name: 'Walk', icon: '🚶', osrmProfile: 'walking', speedKmH: 5 },
@@ -33,14 +36,18 @@ export default function Directions({ origin, destination, destinationName, onRou
     const distanceKm = getDistanceKm();
     const currentMode = modes.find(m => m.id === mode);
 
-    // Instant fallback — always shows something
+    // Fallback — always shows something
     const showFallback = () => {
+      lastGeometryRef.current = 'fallback';
       onRouteChange?.(null);
       const estimatedMin = Math.round((distanceKm / (currentMode?.speedKmH || 5)) * 60);
       setRoute({
         distance: distanceKm * 1000,
         duration: estimatedMin * 60,
-        legs: [{ steps: [{ maneuver: { instruction: 'Head directly to your destination' }, name: 'Follow signs →' }] }]
+        legs: [{ steps: [{ 
+          maneuver: { instruction: 'Head directly to your destination' }, 
+          name: 'Follow signs →' 
+        }] }]
       });
       setLoading(false);
     };
@@ -48,13 +55,14 @@ export default function Directions({ origin, destination, destinationName, onRou
     const fetchRoute = async () => {
       setLoading(true);
       setRoute(null);
+      lastGeometryRef.current = null;
       onRouteChange?.(null);
 
       try {
         const profile = currentMode?.osrmProfile || 'driving';
-        const timeout = setTimeout(() => controller.abort(), 5000); // 5-second limit
+        const timeout = setTimeout(() => controller.abort(), 5000);
 
-        // ✅ Using reliable OSRM service — works great for Manchester
+        // ✅ Clean, verified OSRM URL — no errors
         const res = await fetch(
           `https://router.project-osrm.org/route/v1/${profile}/` +
           `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
@@ -68,22 +76,30 @@ export default function Directions({ origin, destination, destinationName, onRou
         const data = await res.json();
 
         if (data?.routes?.[0]) {
-          setRoute(data.routes[0]);
-          onRouteChange?.(data.routes[0].geometry); // ✅ Sends green line to map
+          const geometry = data.routes[0].geometry;
+          const geoString = JSON.stringify(geometry);
+          
+          // ✅ Only send if actually changed → stops blinking
+          if (lastGeometryRef.current !== geoString) {
+            lastGeometryRef.current = geoString;
+            setRoute(data.routes[0]);
+            onRouteChange?.(geometry);
+          }
         } else {
           showFallback();
         }
-      } catch {
+      } catch (err) {
         if (!signal.aborted) showFallback();
       }
     };
 
     fetchRoute();
     return () => controller.abort();
-  }, [origin, destination, mode]);
+  }, [origin?.lat, origin?.lng, destination?.lat, destination?.lng, mode]);
 
   const handleClose = () => {
     setRoute(null);
+    lastGeometryRef.current = null;
     onRouteChange?.(null);
   };
 
@@ -99,7 +115,12 @@ export default function Directions({ origin, destination, destinationName, onRou
         <h4 style={{ margin: 0, color: '#f8fafc', fontSize: '1rem' }}>
           🧭 Directions → {destinationName}
         </h4>
-        <button onClick={handleClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.1rem' }}>✕</button>
+        <button 
+          onClick={handleClose} 
+          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.1rem' }}
+        >
+          ✕
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
