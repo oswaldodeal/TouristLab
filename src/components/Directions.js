@@ -7,11 +7,12 @@ export default function Directions({ origin, destination, destinationName, onRou
   const [loading, setLoading] = useState(false);
 
   const modes = [
-    { id: 'walk', name: 'Walk', icon: '🚶', profile: 'foot', speedKmH: 5 },
-    { id: 'bike', name: 'Cycle', icon: '🚲', profile: 'bicycle', speedKmH: 15 },
-    { id: 'drive', name: 'Drive', icon: '🚗', profile: 'car', speedKmH: 35 },
+    { id: 'walk', name: 'Walk', icon: '🚶', osrmProfile: 'walking', speedKmH: 5 },
+    { id: 'bike', name: 'Cycle', icon: '🚲', osrmProfile: 'cycling', speedKmH: 15 },
+    { id: 'drive', name: 'Drive', icon: '🚗', osrmProfile: 'driving', speedKmH: 35 },
   ];
 
+  // Straight-line distance calculation
   const getDistanceKm = () => {
     if (!origin || !destination) return 0;
     const R = 6371;
@@ -32,7 +33,7 @@ export default function Directions({ origin, destination, destinationName, onRou
     const distanceKm = getDistanceKm();
     const currentMode = modes.find(m => m.id === mode);
 
-    // Fallback — works instantly
+    // Instant fallback — always shows something
     const showFallback = () => {
       onRouteChange?.(null);
       const estimatedMin = Math.round((distanceKm / (currentMode?.speedKmH || 5)) * 60);
@@ -44,37 +45,38 @@ export default function Directions({ origin, destination, destinationName, onRou
       setLoading(false);
     };
 
- const fetchRoute = async () => {
-  setLoading(true);
-  setRoute(null);
-  onRouteChange?.(null);
-  
-  try {
-    const osrmProfile = mode === 'walk' ? 'walking' : mode === 'bike' ? 'cycling' : 'driving';
-    const timeout = setTimeout(() => controller.abort(), 5000); // 5-second limit
+    const fetchRoute = async () => {
+      setLoading(true);
+      setRoute(null);
+      onRouteChange?.(null);
 
-    const res = await fetch(
-      `https://router.project-osrm.org/route/v1/${osrmProfile}/` +
-      `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
-      `?overview=full&geometries=geojson&steps=true`,
-      { signal }
-    );
-    
-    clearTimeout(timeout);
-    
-    if (!res.ok) throw new Error('Bad response');
-    const data = await res.json();
-    
-    if (data?.routes?.[0]) {
-      setRoute(data.routes[0]);
-      onRouteChange?.(data.routes[0].geometry); // ✅ Green line sent to map
-    } else {
-      showFallback();
-    }
-  } catch {
-    if (!signal.aborted) showFallback();
-  }
-};
+      try {
+        const profile = currentMode?.osrmProfile || 'driving';
+        const timeout = setTimeout(() => controller.abort(), 5000); // 5-second limit
+
+        // ✅ Using reliable OSRM service — works great for Manchester
+        const res = await fetch(
+          `https://router.project-osrm.org/route/v1/${profile}/` +
+          `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
+          `?overview=full&geometries=geojson&steps=true`,
+          { signal }
+        );
+
+        clearTimeout(timeout);
+
+        if (!res.ok) throw new Error('Service unavailable');
+        const data = await res.json();
+
+        if (data?.routes?.[0]) {
+          setRoute(data.routes[0]);
+          onRouteChange?.(data.routes[0].geometry); // ✅ Sends green line to map
+        } else {
+          showFallback();
+        }
+      } catch {
+        if (!signal.aborted) showFallback();
+      }
+    };
 
     fetchRoute();
     return () => controller.abort();
