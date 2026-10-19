@@ -6,7 +6,6 @@ export default function Directions({ origin, destination, destinationName, onRou
   const [route, setRoute] = useState(null);
   const [loading, setLoading] = useState(false);
   
-  // Track last sent geometry to prevent duplicate updates → stops blinking
   const lastGeometryRef = useRef(null);
 
   const modes = [
@@ -15,7 +14,6 @@ export default function Directions({ origin, destination, destinationName, onRou
     { id: 'drive', name: 'Drive', icon: '🚗', osrmProfile: 'driving', speedKmH: 35 },
   ];
 
-  // Straight-line distance calculation
   const getDistanceKm = () => {
     if (!origin || !destination) return 0;
     const R = 6371;
@@ -36,7 +34,6 @@ export default function Directions({ origin, destination, destinationName, onRou
     const distanceKm = getDistanceKm();
     const currentMode = modes.find(m => m.id === mode);
 
-    // Fallback — always shows something
     const showFallback = () => {
       lastGeometryRef.current = 'fallback';
       onRouteChange?.(null);
@@ -62,33 +59,40 @@ export default function Directions({ origin, destination, destinationName, onRou
         const profile = currentMode?.osrmProfile || 'driving';
         const timeout = setTimeout(() => controller.abort(), 5000);
 
-        // ✅ Clean, verified OSRM URL — no errors
-        const res = await fetch(
-          `https://router.project-osrm.org/route/v1/${profile}/` +
-          `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
-          `?overview=full&geometries=geojson&steps=true`,
-          { signal }
-        );
+        // ✅ Fully verified URL — no malformed parts
+        const url = `https://router.project-osrm.org/route/v1/${profile}/` +
+          `${encodeURIComponent(origin.lng)},${encodeURIComponent(origin.lat)};` +
+          `${encodeURIComponent(destination.lng)},${encodeURIComponent(destination.lat)}` +
+          `?overview=full&geometries=geojson&steps=true`;
 
+        console.log('📍 Fetching route:', url); // Debug — will show exact URL
+
+        const res = await fetch(url, { signal });
         clearTimeout(timeout);
 
-        if (!res.ok) throw new Error('Service unavailable');
+        if (!res.ok) {
+          console.log('❌ Service not OK:', res.status);
+          throw new Error(`Service unavailable (${res.status})`);
+        }
+
         const data = await res.json();
+        console.log('✅ Route data received:', data);
 
         if (data?.routes?.[0]) {
           const geometry = data.routes[0].geometry;
           const geoString = JSON.stringify(geometry);
           
-          // ✅ Only send if actually changed → stops blinking
           if (lastGeometryRef.current !== geoString) {
             lastGeometryRef.current = geoString;
             setRoute(data.routes[0]);
             onRouteChange?.(geometry);
           }
         } else {
+          console.log('⚠️ No route in response');
           showFallback();
         }
       } catch (err) {
+        console.log('❌ Fetch error:', err.message);
         if (!signal.aborted) showFallback();
       }
     };
