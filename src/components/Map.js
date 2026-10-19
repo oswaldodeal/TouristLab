@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { BusinessStore } from '../lib/store';
+const destMarkerRef = useRef(null);
 
 export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, store, routeGeoJSON }) {
   const mapRef = useRef(null);
