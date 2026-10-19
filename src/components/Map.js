@@ -71,34 +71,36 @@ export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, s
     };
   }, [userLocation, businesses, RADIUS_KM, CATEGORIES, store]);
 
-  // ✅ Draw/update route line on map
-  useEffect(() => {
-    if (!mapRef.current) return;
+  // ✅ Draw/update green route line — NO BLINKING VERSION
+useEffect(() => {
+  if (!mapRef.current) return;
+  const map = mapRef.current;
 
-    const map = mapRef.current;
+  // Remove existing route only if we have new data
+  if (routeLayerRef.current) {
+    map.removeLayer(routeLayerRef.current);
+    routeLayerRef.current = null;
+  }
 
-    // Remove existing route
-    if (routeLayerRef.current) {
-      map.removeLayer(routeLayerRef.current);
-      routeLayerRef.current = null;
+  // Draw new route
+  if (routeGeoJSON) {
+    routeLayerRef.current = L.geoJSON(routeGeoJSON, {
+      style: {
+        color: '#22c55e',
+        weight: 5,
+        opacity: 0.8,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }
+    }).addTo(map);
+    
+    // Auto-zoom only once — not repeatedly
+    const bounds = routeLayerRef.current.getBounds();
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [60, 60], animate: false });
     }
-
-    // Draw new route if provided
-    if (routeGeoJSON) {
-      routeLayerRef.current = L.geoJSON(routeGeoJSON, {
-        style: {
-          color: '#22c55e',
-          weight: 5,
-          opacity: 0.8,
-          lineCap: 'round',
-          lineJoin: 'round'
-        }
-      }).addTo(map);
-
-      // Auto-zoom to show full route
-      map.fitBounds(routeLayerRef.current.getBounds(), { padding: [60, 60] });
-    }
-  }, [routeGeoJSON]);
+  }
+}, [routeGeoJSON]); // ✅ Runs ONLY when route actually changes
 
   return <div id="touristMap" style={{ width: '100%', height: '500px' }}></div>;
 }
