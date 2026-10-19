@@ -36,14 +36,14 @@ const initialData = [
     status: STATUS.BASIC,
     submittedAt: '2026-10-01T10:00:00Z'
   },
-    {
+  {
     id: 'sample-mcr-3',
     name: 'Manchester Art Gallery',
     category: 'gallery',
     city: 'manchester',
-    address: 'Mosley Street, Manchester',
-    lat: 53.48068,      // ✅ Updated — exact entrance
-    lng: -2.24275,      // ✅ Updated — exact entrance
+    address: 'Mosley Street, Manchester, M2 3JL',
+    lat: 53.48068,   // ✅ Exact entrance
+    lng: -2.24275,   // ✅ Exact entrance
     phone: '0161 235 8888',
     hours: 'Tue–Sun: 10:00 – 17:00',
     website: 'https://manchesterartgallery.org',
@@ -52,7 +52,6 @@ const initialData = [
     submittedAt: '2026-10-01T10:00:00Z'
   }
 ];
-
 export class BusinessStore {
   constructor() {
     this.businesses = [];
