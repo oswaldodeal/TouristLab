@@ -7,11 +7,19 @@ export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, s
   const mapRef = useRef(null);
   const routeLayerRef = useRef(null);
   const routeGeoJSONRef = useRef(null);
+  const businessesRef = useRef(null);
+  const circleRef = useRef(null);
 
-  // Initialize map
+  // Initialize map — ONLY runs when userLocation truly changes
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!userLocation) return;
+
+    // Prevent duplicate map creation
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
 
     // Create map
     const map = L.map('touristMap').setView(
@@ -36,7 +44,7 @@ export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, s
       .bindPopup(`<strong>${userLocation.name || 'Your Location'}</strong>`);
 
     // 1km radius circle
-    L.circle([userLocation.lat, userLocation.lng], {
+    circleRef.current = L.circle([userLocation.lat, userLocation.lng], {
       color: '#3b82f6',
       fillColor: '#3b82f6',
       fillOpacity: 0.06,
@@ -44,8 +52,28 @@ export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, s
       weight: 2
     }).addTo(map);
 
-    // Business markers
-    businesses.forEach(biz => {
+    // Cleanup
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      businessesRef.current = null;
+      routeGeoJSONRef.current = null;
+    };
+  }, [userLocation?.lat, userLocation?.lng, RADIUS_KM]);
+
+  // Update businesses ONLY — separate from map init
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Clear old business markers
+    if (businessesRef.current) {
+      businessesRef.current.forEach(marker => mapRef.current.removeLayer(marker));
+    }
+    
+    // Add new business markers
+    businessesRef.current = businesses.map(biz => {
       const cat = CATEGORIES.find(c => c.id === biz.category);
       const iconHtml = cat?.icon || '📍';
       const icon = L.divIcon({
@@ -58,59 +86,48 @@ export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, s
         ${store.formatDistance(biz.distance)} away
         ${biz.status === 'basic' ? '<br><em style="color:orange">Basic listing</em>' : ''}
       `;
-      L.marker([biz.lat, biz.lng], { icon })
-        .addTo(map)
+      return L.marker([biz.lat, biz.lng], { icon })
+        .addTo(mapRef.current)
         .bindPopup(popupContent);
     });
+  }, [businesses, CATEGORIES, store]);
 
-    // Cleanup on unmount
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, [userLocation, businesses, RADIUS_KM, CATEGORIES, store]);
-
+  // ✅ Green route line — NO BLINKING VERSION
   useEffect(() => {
-  if (!mapRef.current || !routeGeoJSON) return;
+    if (!mapRef.current || !routeGeoJSON) return;
 
-  const map = mapRef.current;
-
-  // Normalise the geometry so identical routes don't trigger a redraw
-  const geoJsonString = JSON.stringify(routeGeoJSON);
-
-  if (routeGeoJSONRef.current === geoJsonString) {
-    // Same route — do nothing, prevent blinking
-    return;
-  }
-
-  routeGeoJSONRef.current = geoJsonString;
-
-  if (routeLayerRef.current) {
-    map.removeLayer(routeLayerRef.current);
-    routeLayerRef.current = null;
-  }
-
-  routeLayerRef.current = L.geoJSON(routeGeoJSON, {
-    style: {
-      color: '#22c55e',
-      weight: 5,
-      opacity: 0.8,
-      lineCap: 'round',
-      lineJoin: 'round'
+    const geoJsonString = JSON.stringify(routeGeoJSON);
+    
+    // Same route = do nothing → stops blinking ✅
+    if (routeGeoJSONRef.current === geoJsonString) {
+      return;
     }
-  }).addTo(map);
 
-  const bounds = routeLayerRef.current.getBounds();
+    routeGeoJSONRef.current = geoJsonString;
 
-  if (bounds.isValid()) {
-    map.fitBounds(bounds, {
-      padding: [60, 60],
-      animate: false
-    });
-  }
-}, [routeGeoJSON]);
+    if (routeLayerRef.current) {
+      mapRef.current.removeLayer(routeLayerRef.current);
+      routeLayerRef.current = null;
+    }
+
+    routeLayerRef.current = L.geoJSON(routeGeoJSON, {
+      style: {
+        color: '#22c55e',
+        weight: 5,
+        opacity: 0.8,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }
+    }).addTo(mapRef.current);
+
+    const bounds = routeLayerRef.current.getBounds();
+    if (bounds.isValid()) {
+      mapRef.current.fitBounds(bounds, {
+        padding: [60, 60],
+        animate: false
+      });
+    }
+  }, [routeGeoJSON]);
 
   return <div id="touristMap" style={{ width: '100%', height: '500px' }}></div>;
 }
