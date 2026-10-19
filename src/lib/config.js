@@ -5,11 +5,11 @@
 
 export const CITIES = {
   manchester: {
-    id: 'manchester',
-    name: 'Manchester City Centre',
-    lat: 53.4808,
-    lng: -2.2426
-  }
+  id: 'manchester',
+  name: 'Manchester City Centre',
+  lat: 53.48068,
+  lng: -2.24275
+}
   // ➕ Add more cities later:
   // london: { id: 'london', name: 'London', lat: ..., lng: ... }
 };
