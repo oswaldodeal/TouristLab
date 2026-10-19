@@ -130,19 +130,18 @@ export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, s
   }, [routeGeoJSON]);
 
   useEffect(() => {
-  if (!mapRef.current || !routeGeoJSON) return;
+  if (!mapRef.current || !routeGeoJSON || !selectedDestination) return;
 
   const geoJsonString = JSON.stringify(routeGeoJSON);
   if (routeGeoJSONRef.current === geoJsonString) return;
   
   routeGeoJSONRef.current = geoJsonString;
 
+  // Remove old layers
   if (routeLayerRef.current) {
     mapRef.current.removeLayer(routeLayerRef.current);
     routeLayerRef.current = null;
   }
-  
-  // Remove old destination marker if exists
   if (destMarkerRef.current) {
     mapRef.current.removeLayer(destMarkerRef.current);
     destMarkerRef.current = null;
@@ -159,27 +158,21 @@ export default function Map({ userLocation, businesses, RADIUS_KM, CATEGORIES, s
     }
   }).addTo(mapRef.current);
 
-  // ✅ Add DESTINATION MARKER at the end of the line
-  const coords = routeGeoJSON.coordinates || routeGeoJSON.features?.[0]?.geometry?.coordinates;
-  if (coords) {
-    const lastPoint = Array.isArray(coords[0]) ? coords[coords.length - 1] : coords;
-    const [lng, lat] = lastPoint;
-    
-    destMarkerRef.current = L.marker([lat, lng], {
-      icon: L.divIcon({
-        html: '<div style="font-size:28px; text-align:center;">🏛️</div>',
-        iconSize: [30, 30],
-        iconAnchor: [15, 30]
-      })
-    }).addTo(mapRef.current)
-     .bindPopup('<strong>Manchester Art Gallery</strong><br>Destination Reached ✅');
-  }
+  // ✅ Add DESTINATION PIN — always at the EXACT business coordinates
+  destMarkerRef.current = L.marker([selectedDestination.lat, selectedDestination.lng], {
+    icon: L.divIcon({
+      html: '<div style="font-size:28px; text-align:center;">🏛️</div>',
+      iconSize: [30, 30],
+      iconAnchor: [15, 30]
+    })
+  }).addTo(mapRef.current)
+   .bindPopup('<strong>Manchester Art Gallery</strong><br>Mosley Street Entrance ✅');
 
+  // Fit map to show both start and end
   const bounds = routeLayerRef.current.getBounds();
-  if (bounds.isValid()) {
-    mapRef.current.fitBounds(bounds, { padding: [80, 80], animate: false });
-  }
-}, [routeGeoJSON]);
+  bounds.extend([selectedDestination.lat, selectedDestination.lng]);
+  mapRef.current.fitBounds(bounds, { padding: [80, 80], animate: false });
+}, [routeGeoJSON, selectedDestination]);
 
   return <div id="touristMap" style={{ width: '100%', height: '500px' }}></div>;
 }
